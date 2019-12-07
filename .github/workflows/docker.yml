@@ -30,23 +30,24 @@ jobs:
     - name: Build image
       run: docker build . --tag image
     - name: Log into registry
-      run: echo "${{ secrets.GITHUB_TOKEN }}" | docker login \
-        docker.pkg.github.com -u ${{ github.actor }} --password-stdin
+      run: echo "${{ secrets.GITHUB_TOKEN }}" | docker login docker.pkg.github.com -u ${GITHUB_ACTOR} --password-stdin
     - name: Push image
       run: |
-        IMAGE_ID=docker.pkg.github.com/${{ github.repository }}/$IMAGE_NAME
+        set -u
+        # https://help.github.com/en/actions/automating-your-workflow-with-github-actions/using-environment-variables
+        IMAGE_ID=docker.pkg.github.com/$GITHUB_REPOSITORY/$IMAGE_NAME
 
          # Strip git ref prefix from version
-        VERSION="${{ github.ref }}" ; VERSION=${VERSION##*/}
+        VERSION=${GITHUB_REF##*/}
 
         # Strip "v" prefix from tag name
-        case "${{ github.ref }}" in refs/tags/*) VERSION=${VERSION#v} ;; esac
+        case "${GITHUB_REF}" in refs/tags/*) VERSION=${VERSION#v} ;; esac
 
         case "$VERSION" in master) VERSION=latest ;; esac
 
         echo IMAGE_ID=$IMAGE_ID
         echo VERSION=$VERSION
-        echo github.ref="${{ github.ref }}"
+        echo GITHUB_REF=$GITHUB_REF
 
         docker tag image $IMAGE_ID:$VERSION
         docker push $IMAGE_ID:$VERSION

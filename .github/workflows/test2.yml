@@ -1,9 +1,40 @@
-name: Experimental
-on: [push]
+name: Create Release
+on:
+  push:
+    tags:
+      - v*
+
 jobs:
-  test:
-    name: Experiment
+  build:
+    name: Create Release
     runs-on: ubuntu-latest
     steps:
+    - uses: actions/setup-go@v1
+      with:
+        go-version: '1.x'
     - uses: actions/checkout@v1
-    - uses: artyom/upload-release-asset@master
+    - name: Get dependencies
+      run: go mod download
+    - name: Run tests
+      run: go test
+    - name: Build and archive
+      run: |
+        GOOS=linux go build -ldflags='-s -w' -trimpath -o hello
+        GZIP=-9 tar czvf hello-linux-amd64.tar.gz hello
+        GOOS=darwin go build -ldflags='-s -w' -trimpath -o hello
+        zip -9 hello-macos.zip hello
+    - name: Create Release
+      id: create_release
+      uses: actions/create-release@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        tag_name: ${{ github.ref }}
+        release_name: Release ${{ github.ref }}
+    - name: Upload artifact
+      uses: artyom/upload-release-asset@master
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ steps.create_release.outputs.upload_url }}
+        assets: "hello-linux-amd64.tar.gz:hello-macos.zip"
